@@ -1,0 +1,13 @@
+**/.DS_Store
+
+# local env files
+.env
+/env
+
+# Data Folders
+/data
+/logs
+/exports
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
