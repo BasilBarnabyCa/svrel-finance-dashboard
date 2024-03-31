@@ -23,16 +23,6 @@ def get_monthly_sales(selected_year):
     })
     return year_data
 
-# Step 1: Prepare Data Functions
-def get_monthly_sales_extended(selected_year):
-    year_data = df[df['year'] == selected_year].groupby('month', as_index=False).agg({
-        'live_races_sales': 'sum',
-        'simulcast_sales': 'sum',
-		'live_races_total': 'mean',
-        'simulcast_days_total': 'mean'
-    })
-    return year_data
-
 # Initialize Dash app
 app = Dash(__name__)
 
@@ -50,16 +40,6 @@ app.layout = html.Div(children=[
         dcc.Graph(id='yearly-sales-graph')
     ]),
 
-     html.Div([
-        html.H2("Live Races & Simulcast Days"),
-        dcc.Dropdown(
-            id='race-day-dropdown',
-            options=[{'label': year, 'value': year} for year in sorted(df['year'].unique())],
-            value=df['year'].min()
-        ),
-        dcc.Graph(id='race-day-trend-graph')
-    ]),
-    
     html.Div([
         html.H2("2024 Monthly Sales Comparison"),
         dcc.Graph(id='monthly-comparison-graph-2024')
@@ -96,39 +76,7 @@ def update_yearly_sales_graph(selected_year):
             barmode='group'
         )
     }
-    
 
-# Callback to Update Live Races & Simulcast Days Graph
-@app.callback(
-    Output('race-day-trend-graph', 'figure'),
-    [Input('race-day-dropdown', 'value')]
-)
-def update_race_day_trend_graph(selected_year):
-    monthly_data = get_monthly_sales_extended(selected_year)
-    trace1 = go.Scatter(
-        x=monthly_data['month'],
-        y=monthly_data['live_races_total'],
-        mode='lines+markers',
-        name='Live Races',
-        marker=dict(color='DodgerBlue')
-    )
-    trace2 = go.Bar(
-        x=monthly_data['month'],
-        y=monthly_data['simulcast_days_total'],
-        name='Simulcast Days',
-        marker=dict(color='Crimson')
-    )
-    return {
-        'data': [trace1, trace2],
-        'layout': go.Layout(
-            title=f'Live Races & Simulcast Days for {selected_year}',
-            xaxis={'title': 'Month', 'categoryorder': 'array', 'categoryarray': month_order},
-            yaxis={'title': 'Count'},
-            barmode='group',
-            hovermode='closest'
-        )
-    }
-    
 # Step 4: Callback to Update Monthly Sales Comparison Graph for 2024
 @app.callback(
     Output('monthly-comparison-graph-2024', 'figure'),
