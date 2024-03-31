@@ -2,53 +2,76 @@ from dash import Dash, html, dcc, Input, Output
 import plotly.graph_objs as go
 import pandas as pd
 
+# Load the CSV data into a DataFrame
+df = pd.read_csv('data/csvs/sales.csv')
+
+# Convert 'date' column to datetime to extract year and month
+df['date'] = pd.to_datetime(df['date'])
+df['year'] = df['date'].dt.year  # Extract year for filtering
+df['month_name'] = df['date'].dt.strftime('%B')  # Extract month name for display
+
+# Create a month order based on the CSV ordering
+month_order = df['month_name'].unique()
+
+# Create a categorical type for preserving the month order
+df['month'] = pd.Categorical(df['month_name'], categories=month_order, ordered=True)
+
 # Step 1: Prepare Data Functions
-def load_and_aggregate_sales(sheet_name):
-    df = pd.read_excel('data/sales.xlsx', sheet_name=sheet_name, skiprows=2)  # Adjust path and skiprows as necessary
-    print(df.head())
-    df['SALES'] = pd.to_numeric(df['SALES'], errors='coerce')  # Adjust 'SALES' if your column name is different
-    df = df.dropna(subset=['SALES'])
-
-    total_sales = df['SALES'].sum()
-    average_sales = df['SALES'].mean()
-
-    return total_sales, average_sales
+def get_monthly_sales(selected_year):
+    # Filter data for the selected year and group by month with the preserved order
+    year_data = df[df['year'] == selected_year].groupby('month', as_index=False, observed=False).agg({
+        'live_races_sales': 'sum',
+        'simulcast_sales': 'sum'
+    })
+    return year_data
 
 # Initialize Dash app
 app = Dash(__name__)
 
 # Step 2: Dash App Layout
 app.layout = html.Div(children=[
-    html.H1("Sales Dashboard"),
+    html.H1("Yearly Sales Dashboard"),
     
+    # Dropdown to select the year
     dcc.Dropdown(
-        id='month-dropdown',
-        options=[{'label': month, 'value': month} for month in ['July 2020', 'August 2020', '...']],  # Populate with all relevant months
-        value='July 2020'  # Default value
+        id='year-dropdown',
+        options=[{'label': year, 'value': year} for year in df['year'].unique()],
+        value=df['year'].iloc[0]  # Default value to the first year in the data
     ),
     
+    # Graph to display sales data
     dcc.Graph(id='sales-graph')
 ])
 
 # Step 3: Callback to Update Graph
 @app.callback(
     Output('sales-graph', 'figure'),
-    [Input('month-dropdown', 'value')]
+    [Input('year-dropdown', 'value')]
 )
-def update_graph(selected_month):
-    total_sales, average_sales = load_and_aggregate_sales(selected_month)
+def update_graph(selected_year):
+    monthly_sales = get_monthly_sales(selected_year)
 
-    # Creating a bar chart with total and average sales
-    data = [
-        go.Bar(x=['Total Sales', 'Average Sales'], y=[total_sales, average_sales], marker_color=['blue', 'green'])
-    ]
+    # Creating a bar chart with live and simulcast sales
+    trace1 = go.Bar(
+        x=monthly_sales['month'],
+        y=monthly_sales['live_races_sales'],
+        name='Live Races Sales',
+        marker_color='blue'
+    )
+    trace2 = go.Bar(
+        x=monthly_sales['month'],
+        y=monthly_sales['simulcast_sales'],
+        name='Simulcast Sales',
+        marker_color='green'
+    )
 
     figure = {
-        'data': data,
+        'data': [trace1, trace2],
         'layout': {
-            'title': f'Sales Data for {selected_month}',
-            'xaxis': {'title': 'Metric'},
-            'yaxis': {'title': 'Amount'}
+            'title': f'Monthly Sales Data for {selected_year}',
+            'xaxis': {'title': 'Month', 'type': 'category'},
+            'yaxis': {'title': 'Sales Amount'},
+            'barmode': 'group'
         }
     }
 

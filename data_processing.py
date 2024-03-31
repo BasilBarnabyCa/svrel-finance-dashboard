@@ -1,29 +1,55 @@
 import pandas as pd
 
-def consolidate_excel_sheets_to_csv(excel_path, sheet_names, output_csv_path):
+def get_index_of_totals(df):
+    # Locate the row with 'TOTAL' in the 'F' column, which indicates the total values
+    return df.index[df.iloc[:, 5].str.contains('TOTAL', case=False, na=False)].tolist()
+
+def consolidate_excel_sheets_to_csv(excel_path, output_csv_path):
+    xls = pd.ExcelFile(excel_path)
+    start_date = pd.to_datetime("2023-01-01")
     consolidated_data = []
 
-    for sheet in sheet_names:
-        df = pd.read_excel(excel_path, sheet_name=sheet, skiprows=2)  # Adjust skiprows as needed
-        df = df[['Date', 'SALES']]  # Select only the columns you need, adjust column names as necessary
-        df['Month'] = sheet  # Optional: Add a column for the month
-        consolidated_data.append(df)
+    for sheet in xls.sheet_names:
+        try:
+            # Parse the sheet name into a date, if not possible, it will raise an error and continue
+            sheet_date = pd.to_datetime(sheet, errors='raise', format='%B %Y')
+            if sheet_date < start_date:
+                continue  # Skip the sheets before January 2023
+        except ValueError:
+            continue  # Skip sheet names that do not represent a month and year
+        
+        df = pd.read_excel(excel_path, sheet_name=sheet)
 
-    # Combine all dataframes into a single dataframe
-    consolidated_df = pd.concat(consolidated_data, ignore_index=True)
+        total_indices = get_index_of_totals(df)
+        if len(total_indices) < 2:
+            print(f"Not enough 'TOTAL' entries found in sheet: {sheet} - Found: {len(total_indices)}")
+            continue
 
-    # Data cleaning and organization
-    consolidated_df['Date'] = pd.to_datetime(consolidated_df['Date'])
-    consolidated_df['SALES'] = pd.to_numeric(consolidated_df['SALES'], errors='coerce')
-    consolidated_df.dropna(subset=['SALES'], inplace=True)
-    consolidated_df.sort_values(by='Date', inplace=True)
+        # The index of the 'SALES' column should be 2 places after the 'F' column, which is index 5
+        sales_index = 7
+        purse_index = 8
+        days_index = 6  # This assumes 'DAYS' is the column immediately after 'F' for simulcast
 
-    # Save to CSV
+        # Create a dictionary for the row, ensuring to round values to 2 decimal places
+        row = {
+            'date': sheet_date.strftime('%B %Y'),
+            'live_races_total': int(df.iloc[total_indices[0], days_index]),
+            'live_races_sales': round(float(df.iloc[total_indices[0], sales_index]), 2),
+            'live_races_purse': round(float(df.iloc[total_indices[0], purse_index]), 2),
+            'simulcast_days_total': int(df.iloc[total_indices[1], days_index]),
+            'simulcast_sales': round(float(df.iloc[total_indices[1], sales_index]), 2),
+            'simulcast_average': round(float(df.iloc[total_indices[1], sales_index]) / int(df.iloc[total_indices[1], days_index]), 2),
+        }
+        consolidated_data.append(row)
+
+    # Convert the list of dictionaries into a DataFrame
+    consolidated_df = pd.DataFrame(consolidated_data)
+
+    # Save the DataFrame to a CSV file
     consolidated_df.to_csv(output_csv_path, index=False)
 
-# If you want to run this script directly for testing or standalone use
+# If you want to run this script as a standalone script for testing
 if __name__ == "__main__":
-    excel_path = 'data/spreadsheets/sales.xlsx'  # Update with the path to your Excel file
-    sheet_names = ['July 2020', 'August 2020', 'Sept 2020']  # Add all relevant sheet names
-    output_csv_path = 'data/csvs/sales_data.csv'
-    consolidate_excel_sheets_to_csv(excel_path, sheet_names, output_csv_path)
+    excel_path = 'data/spreadsheets/sales_update.xlsx'  # Replace with your Excel file path
+    output_csv_path = 'data/csvs/sales.csv'  # Replace with your output CSV file path
+    consolidate_excel_sheets_to_csv(excel_path, output_csv_path)
