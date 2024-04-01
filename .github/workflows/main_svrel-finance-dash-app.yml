@@ -58,6 +58,11 @@ jobs:
         with:
           name: python-app
 
+      - name: Login to Azure CLI using a service principal
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Unzip artifact for deployment
         run: unzip release.zip
 
