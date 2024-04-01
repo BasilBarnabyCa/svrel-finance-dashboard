@@ -41,6 +41,7 @@ def get_sales_target(month_name):
 
 # Initialize Dash app
 app = Dash(__name__)
+server = app.server
 
 # Dash App Layout
 app.layout = html.Div(children=[
