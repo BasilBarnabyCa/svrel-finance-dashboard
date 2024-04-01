@@ -48,8 +48,18 @@ def consolidate_excel_sheets_to_csv(excel_path, output_csv_path):
     # Save the DataFrame to a CSV file
     consolidated_df.to_csv(output_csv_path, index=False)
 
+def excel_to_csv_targets(excel_path, csv_path):
+    # Read the target Excel file
+    df_targets = pd.read_excel(excel_path)
+    
+    # Save to CSV
+    df_targets.to_csv(csv_path, index=False)
+    
 # If you want to run this script as a standalone script for testing
 if __name__ == "__main__":
-    excel_path = 'data/spreadsheets/sales_update.xlsx'  # Replace with your Excel file path
-    output_csv_path = 'data/csvs/sales.csv'  # Replace with your output CSV file path
-    consolidate_excel_sheets_to_csv(excel_path, output_csv_path)
+    sales_excel_path = 'data/spreadsheets/sales.xlsx'
+    sales_output_csv_path = 'data/csvs/sales.csv'
+    targets_excel_path = 'data/spreadsheets/targets.xlsx'
+    targets_output_csv_path = 'data/csvs/targets.csv'
+    consolidate_excel_sheets_to_csv(sales_excel_path, sales_output_csv_path)
+    excel_to_csv_targets(targets_excel_path, targets_output_csv_path)
