@@ -5,7 +5,7 @@
 /env
 
 # Data Folders
-/data
+# /data
 /logs
 /exports
 
