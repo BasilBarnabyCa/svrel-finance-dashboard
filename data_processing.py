@@ -33,9 +33,9 @@ def consolidate_excel_sheets_to_csv(excel_path, output_csv_path):
         # Create a dictionary for the row, ensuring to round values to 2 decimal places
         row = {
             'date': sheet_date.strftime('%B %Y'),
-            'local_races_total': int(df.iloc[total_indices[0], days_index]),
-            'local_race_sales': round(float(df.iloc[total_indices[0], sales_index]), 2),
-            'local_race_purses': round(float(df.iloc[total_indices[0], purse_index]), 2),
+            'live_races_total': int(df.iloc[total_indices[0], days_index]),
+            'live_race_sales': round(float(df.iloc[total_indices[0], sales_index]), 2),
+            'live_race_purses': round(float(df.iloc[total_indices[0], purse_index]), 2),
             'simulcast_days_total': int(df.iloc[total_indices[1], days_index]),
             'simulcast_sales': round(float(df.iloc[total_indices[1], sales_index]), 2),
             'simulcast_average': round(float(df.iloc[total_indices[1], sales_index]) / int(df.iloc[total_indices[1], days_index]), 2),

@@ -1,4 +1,4 @@
-date,local_races_total,local_race_sales,local_race_purses,simulcast_days_total,simulcast_sales,simulcast_average
+date,live_races_total,live_race_sales,live_race_purses,simulcast_days_total,simulcast_sales,simulcast_average
 January 2023,65,419327342.64,54040000.0,31,368334959.78,11881772.9
 February 2023,68,455859689.0,57110000.0,28,359557577.58,12841342.06
 March 2023,66,442793770.29,56110000.0,31,384179852.76,12392898.48

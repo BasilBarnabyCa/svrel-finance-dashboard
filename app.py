@@ -72,9 +72,9 @@ def get_live_races_data(selected_month):
     previous_year = current_year - 1
 
     metrics = {
-        "Sales": "local_race_sales",
-        "Purses": "local_race_purses",
-        "No. of Races": "local_races_total",
+        "Sales": "live_race_sales",
+        "Purses": "live_race_purses",
+        "No. of Races": "live_races_total",
     }
 
     data_frames = []
@@ -225,7 +225,7 @@ app.layout = html.Div(
                     className="mb-8",
                     children=[
                         html.Label(
-                            "Local Races:",
+                            "Live Races:",
                             className="block text-lg font-medium text-gray-700",
                         ),
                         html.Div(id="live-races-comparison-table"),
@@ -266,17 +266,26 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id="metric-dropdown",
                             options=[
-                                {"label": "Local Sales", "value": "local_race_sales"},
-                                {"label": "Purses", "value": "local_race_purses"},
-                                {"label": "Local Race Days", "value": "local_races_total"},
+                                {"label": "Live Sales", "value": "live_race_sales"},
+                                {"label": "Purses", "value": "live_race_purses"},
+                                {
+                                    "label": "Live Race Days",
+                                    "value": "live_races_total",
+                                },
                                 {
                                     "label": "Simulcast Sales",
                                     "value": "simulcast_sales",
                                 },
-                                {"label": "Simulcast Averages", "value": "simulcast_average"},
-                                {"label": "Simulcast Days", "value": "simulcast_days_total"},
+                                {
+                                    "label": "Simulcast Averages",
+                                    "value": "simulcast_average",
+                                },
+                                {
+                                    "label": "Simulcast Days",
+                                    "value": "simulcast_days_total",
+                                },
                             ],
-                            value="local_race_sales",  # Default metric
+                            value="live_race_sales",  # Default metric
                             className="block w-full mt-1 rounded-md border-gray-300 shadow-sm",
                         ),
                     ],
@@ -452,53 +461,47 @@ def update_graph(selected_metric):
     }
 
 
-# Callback to update the live races sales gauge
+# Callback to update the live races sales gauge with modern colors
 @app.callback(
     Output("live-races-sales-gauge", "figure"),
     [Input("month-dropdown", "value")],
 )
-def update_local_race_sales_gauge(selected_month):
+def update_live_race_sales_gauge(selected_month):
     selected_year = int(df["year"].max())
-    # Filter for the selected year and month
     total_sales = (
         df[(df["year"] == selected_year) & (df["month_name"] == selected_month)][
-            "local_race_sales"
+            "live_races_sales"
         ].sum()
         / 1e6
-    )  # Convert to millions
-    # Get sales target for the selected month
-    sales_target = get_sales_target(selected_month) / 1e6  # Convert to millions
+    )
+    sales_target = get_sales_target(selected_month) / 1e6
 
-    # Check if there's a matching target for the selected date
     target_row = df_targets[df_targets["Month"] == selected_month]
     if not target_row.empty:
-        sales_target = target_row["Target"].values[0] / 1e6  # Convert to millions
+        sales_target = target_row["Target"].values[0] / 1e6
     else:
-        # Set the sales target to 1 billion if no target is found
-        sales_target = 1000  # 1 billion in millions
+        sales_target = 1000
 
-    # Set the maximum range for the gauge to the sales target
-    max_range = sales_target
+    max_range = max(sales_target, total_sales) if total_sales else sales_target
 
-    # Create the gauge figure
-    fig = go.Figure(
+    fig_live_races = go.Figure(
         go.Indicator(
             mode="gauge+number",
             value=total_sales,
-            number={"suffix": "M"},  # Add 'M' suffix to the number
+            number={"suffix": "M"},
             domain={"x": [0, 1], "y": [0, 1]},
             title={
-                "text": f"Local Race Sales for {selected_month} {selected_year} (Millions)"
+                "text": f"Live Race Sales for {selected_month} {selected_year} (Millions)"
             },
             gauge={
-                "axis": {"range": [0, max_range]},  # Adjust the gauge range
-                "bar": {"color": "blue"},
+                "axis": {"range": [0, max_range]},
+                "bar": {"color": "#00a2ff"},
+                "bgcolor": "white",
+                "borderwidth": 2,
+                "bordercolor": "gray",
                 "steps": [
-                    {"range": [0, sales_target], "color": "lightblue"},
-                    {
-                        "range": [sales_target, max_range],
-                        "color": "blue",
-                    },  # The step ends at the maximum range
+                    {"range": [0, sales_target], "color": "#e5f6fd"},
+                    {"range": [sales_target, max_range], "color": "#00a2ff"},
                 ],
                 "threshold": {
                     "line": {"color": "red", "width": 4},
@@ -508,57 +511,50 @@ def update_local_race_sales_gauge(selected_month):
             },
         )
     )
+    return fig_live_races
 
-    return fig
 
-
-# Callback to update the simulcast sales gauge
+# Callback to update the simulcast sales gauge with modern colors
 @app.callback(
     Output("simulcast-sales-gauge", "figure"),
     [Input("month-dropdown", "value")],
 )
 def update_simulcast_sales_gauge(selected_month):
     selected_year = int(df["year"].max())
-    # Filter for the selected year and month
     total_sales = (
         df[(df["year"] == selected_year) & (df["month_name"] == selected_month)][
             "simulcast_sales"
         ].sum()
         / 1e6
-    )  # Convert to millions
-    # Get sales target for the selected month
-    sales_target = get_sales_target(selected_month) / 1e6  # Convert to millions
+    )
+    sales_target = get_sales_target(selected_month) / 1e6
 
-    # Check if there's a matching target for the selected date
     target_row = df_targets[df_targets["Month"] == selected_month]
     if not target_row.empty:
-        sales_target = target_row["Target"].values[0] / 1e6  # Convert to millions
+        sales_target = target_row["Target"].values[0] / 1e6
     else:
-        # Set the sales target to 1 billion if no target is found
-        sales_target = 1000  # 1 billion in millions
+        sales_target = 1000
 
-    # Set the maximum range for the gauge to the sales target
-    max_range = sales_target
+    max_range = max(sales_target, total_sales) if total_sales else sales_target
 
-    # Create the gauge figure
-    fig = go.Figure(
+    fig_simulcast = go.Figure(
         go.Indicator(
             mode="gauge+number",
             value=total_sales,
-            number={"suffix": "M"},  # Add 'M' suffix to the number
+            number={"suffix": "M"},
             domain={"x": [0, 1], "y": [0, 1]},
             title={
                 "text": f"Simulcast Sales for {selected_month} {selected_year} (Millions)"
             },
             gauge={
-                "axis": {"range": [0, max_range]},  # Adjust the gauge range
-                "bar": {"color": "blue"},
+                "axis": {"range": [0, max_range]},
+                "bar": {"color": "#fa8231"},
+                "bgcolor": "white",
+                "borderwidth": 2,
+                "bordercolor": "gray",
                 "steps": [
-                    {"range": [0, sales_target], "color": "lightblue"},
-                    {
-                        "range": [sales_target, max_range],
-                        "color": "blue",
-                    },  # The step ends at the maximum range
+                    {"range": [0, sales_target], "color": "#ffe5d8"},
+                    {"range": [sales_target, max_range], "color": "#fa8231"},
                 ],
                 "threshold": {
                     "line": {"color": "red", "width": 4},
@@ -568,8 +564,7 @@ def update_simulcast_sales_gauge(selected_month):
             },
         )
     )
-
-    return fig
+    return fig_simulcast
 
 
 # Step 5: Run the Dash App
