@@ -60,7 +60,12 @@ def excel_to_csv_targets(excel_path, csv_path):
 if __name__ == "__main__":
     sales_excel_path = 'data/spreadsheets/sales.xlsx'
     sales_output_csv_path = 'data/csvs/sales.csv'
-    targets_excel_path = 'data/spreadsheets/targets.xlsx'
-    targets_output_csv_path = 'data/csvs/targets.csv'
     consolidate_excel_sheets_to_csv(sales_excel_path, sales_output_csv_path)
+    
+    targets_excel_path = 'data/spreadsheets/live-targets.xlsx'
+    targets_output_csv_path = 'data/csvs/live-targets.csv'
+    excel_to_csv_targets(targets_excel_path, targets_output_csv_path)
+    
+    targets_excel_path = 'data/spreadsheets/simulcast-targets.xlsx'
+    targets_output_csv_path = 'data/csvs/simulcast-targets.csv'
     excel_to_csv_targets(targets_excel_path, targets_output_csv_path)

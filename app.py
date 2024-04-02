@@ -5,7 +5,6 @@ import numpy as np
 
 # Load the CSV data into a DataFrame
 df = pd.read_csv("data/csvs/sales.csv")
-df_targets = pd.read_csv("data/csvs/targets.csv")
 
 # Convert 'date' column to datetime to extract year and month
 df["date"] = pd.to_datetime(df["date"])
@@ -29,10 +28,19 @@ month_order = [
 ]
 df["month"] = pd.Categorical(df["month_name"], categories=month_order, ordered=True)
 
+excess_step_color = "#6ee7b7"
+
 
 # Prepare Data Functions
-def get_sales_target(month_name):
-    target_row = df_targets[df_targets["Month"] == month_name]
+def get_sales_target(target_file, month_name, year):
+    df_targets = pd.read_csv("data/csvs/" + target_file + ".csv")
+    # Ensure the 'Month' column is in datetime format
+    df_targets["Month"] = pd.to_datetime(df_targets["Month"])
+    # Find the target for the given month and year
+    target_row = df_targets[
+        (df_targets["Month"].dt.strftime("%B") == month_name)
+        & (df_targets["Month"].dt.year == year)
+    ]
     if not target_row.empty:
         return target_row["Target"].values[0]
     return 0
@@ -61,7 +69,11 @@ def format_currency(value):
 def format_value(metric_name, value):
     if np.isnan(value) or value is None:
         return "-"
-    if "Revenue" in metric_name or "Purse Structure" in metric_name or "Average" in metric_name:
+    if (
+        "Revenue" in metric_name
+        or "Purse Structure" in metric_name
+        or "Average" in metric_name
+    ):
         return format_currency(value)
     else:  # For non-currency metrics like "No. of Races" or "No. of Days"
         return f"{int(value)}"  # Use int() to convert float to int and remove decimals
@@ -226,7 +238,7 @@ app.layout = html.Div(
                     className="mb-8",
                     children=[
                         html.Label(
-                            "Live Races:",
+                            "Live Racing:",
                             className="block text-lg font-medium text-gray-700",
                         ),
                         html.Div(id="live-races-comparison-table"),
@@ -254,21 +266,25 @@ app.layout = html.Div(
                         dcc.Graph(id="simulcast-sales-gauge", className="ml-4"),
                     ],
                 ),
-                html.H2(
-                    "KPI Review", className="text-2xl font-semibold mb-4 mt-10"
-                ),
+                html.H2("KPI Review", className="text-2xl font-semibold mb-4 mt-10"),
                 html.Div(
                     className="mb-4",
                     children=[
                         html.Label(
-                            "Select KPI:",
+                            "Select an Option:",
                             className="block text-lg font-medium text-gray-700",
                         ),
                         dcc.Dropdown(
                             id="metric-dropdown",
                             options=[
-                                {"label": "Live Racing Revenue", "value": "live_racing_revenue"},
-                                {"label": "Purse Structure", "value": "purse_structure"},
+                                {
+                                    "label": "Live Racing Revenue",
+                                    "value": "live_racing_revenue",
+                                },
+                                {
+                                    "label": "Purse Structure",
+                                    "value": "purse_structure",
+                                },
                                 {
                                     "label": "No. of Live Races",
                                     "value": "number_of_live_races",
@@ -326,7 +342,7 @@ def display_live_races_table(selected_month):
             {"name": "Percentage Change", "id": "Percentage Change"},
         ],
         style_table={"overflowX": "auto"},
-        style_header={"fontWeight": "bold", "textAlign": "right"},
+        style_header={"fontWeight": "bold", "textAlign": "right", "background-color": "#bae6fd"},
         style_header_conditional=[
             {
                 "if": {"column_id": "Metric"},
@@ -384,7 +400,7 @@ def display_simulcast_table(selected_month):
                 {"name": "Percentage Change", "id": "Percentage Change"},
             ],
             style_table={"overflowX": "auto"},
-            style_header={"fontWeight": "bold", "textAlign": "right"},
+            style_header={"fontWeight": "bold", "textAlign": "right", "background-color": "#fed7aa"},
             style_header_conditional=[
                 {
                     "if": {"column_id": "Metric"},
@@ -462,7 +478,6 @@ def update_graph(selected_metric):
     }
 
 
-# Callback to update the live races sales gauge with modern colors
 @app.callback(
     Output("live-race-sales-gauge", "figure"),
     [Input("month-dropdown", "value")],
@@ -475,15 +490,14 @@ def update_live_racing_revenue_gauge(selected_month):
         ].sum()
         / 1e6
     )
-    sales_target = get_sales_target(selected_month) / 1e6
+    sales_target = get_sales_target("live-targets", selected_month, selected_year) / 1e6
+    bar_color = "#00a2ff"
+    step_color = "#e5f6fd"
 
-    target_row = df_targets[df_targets["Month"] == selected_month]
-    if not target_row.empty:
-        sales_target = target_row["Target"].values[0] / 1e6
-    else:
-        sales_target = 1000
+    # Use max to ensure the gauge's range accommodates both sales and target
+    max_range = max(sales_target, total_sales)
 
-    max_range = max(sales_target, total_sales) if total_sales else sales_target
+    title_text = f"Live Racing Revenue for {selected_month} {selected_year} (Millions)"
 
     fig_live_races = go.Figure(
         go.Indicator(
@@ -491,18 +505,13 @@ def update_live_racing_revenue_gauge(selected_month):
             value=total_sales,
             number={"suffix": "M"},
             domain={"x": [0, 1], "y": [0, 1]},
-            title={
-                "text": f"Live Race Sales for {selected_month} {selected_year} (Millions)"
-            },
+            title={"text": title_text},
             gauge={
                 "axis": {"range": [0, max_range]},
-                "bar": {"color": "#00a2ff"},
-                "bgcolor": "white",
-                "borderwidth": 2,
-                "bordercolor": "gray",
+                "bar": {"color": bar_color},
                 "steps": [
-                    {"range": [0, sales_target], "color": "#e5f6fd"},
-                    {"range": [sales_target, max_range], "color": "#00a2ff"},
+                    {"range": [0, sales_target], "color": step_color},
+                    {"range": [sales_target, max_range], "color": excess_step_color},
                 ],
                 "threshold": {
                     "line": {"color": "red", "width": 4},
@@ -512,10 +521,19 @@ def update_live_racing_revenue_gauge(selected_month):
             },
         )
     )
+
+    # Add annotation for the target
+    fig_live_races.add_annotation(
+        x=0.5,
+        y=0.3,
+        text=f"Target: {sales_target:.2f}M",
+        showarrow=False,
+        font=dict(size=16, color="#475569"),
+    )
+
     return fig_live_races
 
 
-# Callback to update the simulcast sales gauge with modern colors
 @app.callback(
     Output("simulcast-sales-gauge", "figure"),
     [Input("month-dropdown", "value")],
@@ -528,15 +546,16 @@ def update_simulcast_revenue_gauge(selected_month):
         ].sum()
         / 1e6
     )
-    sales_target = get_sales_target(selected_month) / 1e6
+    sales_target = (
+        get_sales_target("simulcast-targets", selected_month, selected_year) / 1e6
+    )
+    bar_color = "#fa8231"
+    step_color = "#ffe5d8"
 
-    target_row = df_targets[df_targets["Month"] == selected_month]
-    if not target_row.empty:
-        sales_target = target_row["Target"].values[0] / 1e6
-    else:
-        sales_target = 1000
+    # Use max to ensure the gauge's range accommodates both sales and target
+    max_range = max(sales_target, total_sales)
 
-    max_range = max(sales_target, total_sales) if total_sales else sales_target
+    title_text = f"Simulcast Revenue for {selected_month} {selected_year} (Millions)"
 
     fig_simulcast = go.Figure(
         go.Indicator(
@@ -544,18 +563,13 @@ def update_simulcast_revenue_gauge(selected_month):
             value=total_sales,
             number={"suffix": "M"},
             domain={"x": [0, 1], "y": [0, 1]},
-            title={
-                "text": f"Simulcast Sales for {selected_month} {selected_year} (Millions)"
-            },
+            title={"text": title_text},
             gauge={
                 "axis": {"range": [0, max_range]},
-                "bar": {"color": "#fa8231"},
-                "bgcolor": "white",
-                "borderwidth": 2,
-                "bordercolor": "gray",
+                "bar": {"color": bar_color},
                 "steps": [
-                    {"range": [0, sales_target], "color": "#ffe5d8"},
-                    {"range": [sales_target, max_range], "color": "#fa8231"},
+                    {"range": [0, sales_target], "color": step_color},
+                    {"range": [sales_target, max_range], "color": excess_step_color},
                 ],
                 "threshold": {
                     "line": {"color": "red", "width": 4},
@@ -565,6 +579,16 @@ def update_simulcast_revenue_gauge(selected_month):
             },
         )
     )
+
+    # Add annotation for the target
+    fig_simulcast.add_annotation(
+        x=0.5,
+        y=0.3,
+        text=f"Target: {sales_target:.2f}M",
+        showarrow=False,
+        font=dict(size=16, color="#475569"),
+    )
+
     return fig_simulcast
 
 
