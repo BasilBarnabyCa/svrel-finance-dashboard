@@ -31,6 +31,31 @@ df["month"] = pd.Categorical(df["month_name"], categories=month_order, ordered=T
 
 
 # Prepare Data Functions
+def get_monthly_sales(selected_year):
+    year_data = (
+        df[df["year"] == selected_year]
+        .groupby("month", as_index=False)
+        .agg({"live_races_sales": "sum", "simulcast_sales": "sum"})
+    )
+    return year_data
+
+
+def get_monthly_sales_extended(selected_year):
+    year_data = (
+        df[df["year"] == selected_year]
+        .groupby("month", as_index=False)
+        .agg(
+            {
+                "live_races_sales": "sum",
+                "simulcast_sales": "sum",
+                "live_races_total": "mean",
+                "simulcast_days_total": "mean",
+            }
+        )
+    )
+    return year_data
+
+
 def get_sales_target(month_name):
     target_row = df_targets[df_targets["Month"] == month_name]
     if not target_row.empty:
@@ -212,40 +237,98 @@ app.layout = html.Div(
             ],
         ),
         html.Div(
-            className="flex justify-center items-center mt-4",
+            className="flex flex-wrap",
             children=[
-                dcc.Graph(id="live-races-sales-gauge", className="mr-4"),
-                dcc.Graph(id="simulcast-sales-gauge", className="ml-4"),
+                html.Div(
+                    className="w-full pr-4",
+                    children=[
+                        html.H2(
+                            "Yearly Sales Data", className="text-xl font-semibold mb-4"
+                        ),
+                        dcc.Dropdown(
+                            id="year-dropdown",
+                            options=[
+                                {"label": year, "value": year}
+                                for year in sorted(df["year"].unique())
+                            ],
+                            value=df["year"].max(),
+                            className="w-full py-2 px-4 mb-4 border rounded-lg",
+                        ),
+                        dcc.Graph(id="yearly-sales-graph"),
+                    ],
+                ),
+                html.Div(
+                    className="w-full pl-4",
+                    children=[
+                        html.H2(
+                            "Live Races & Simulcast Days",
+                            className="text-xl font-semibold mb-4",
+                        ),
+                        dcc.Dropdown(
+                            id="race-day-dropdown",
+                            options=[
+                                {"label": year, "value": year}
+                                for year in sorted(df["year"].unique())
+                            ],
+                            value=df["year"].max(),
+                            className="w-full py-2 px-4 mb-4 border rounded-lg",
+                        ),
+                        dcc.Graph(id="race-day-trend-graph"),
+                    ],
+                ),
             ],
         ),
         html.Div(
-            className="mb-4",
+            className="flex",
             children=[
-                html.Label(
-                    "Select Metric:",
-                    className="block text-lg font-medium text-gray-700",
-                ),
-                dcc.Dropdown(
-                    id="metric-dropdown",
-                    options=[
-                        {"label": "Local Sales", "value": "live_races_sales"},
-                        {"label": "Purses", "value": "live_races_purse"},
-                        {"label": "Race Days", "value": "live_races_total"},
-                        {"label": "Simulcast Sales", "value": "simulcast_sales"},
-                        {"label": "Average", "value": "simulcast_average"},
-                        {"label": "Days", "value": "simulcast_days_total"},
+                html.Div(
+                    style={"width": "75%"},
+                    children=[
+                        html.H2(
+                            "2024 Monthly Sales Comparison",
+                            className="text-xl font-semibold mb-4",
+                        ),
+                        dcc.Graph(id="monthly-comparison-graph-2024"),
                     ],
-                    value="live_races_sales",  # Default metric
-                    className="block w-full mt-1 rounded-md border-gray-300 shadow-sm",
+                    className="inline-block align-top",
+                ),
+                html.Div(
+                    style={"width": "25%", "margin-left": "1%"},
+                    children=[
+                        html.Div(
+                            style={"margin-top": "10px"},
+                            children=[
+                                html.H2(
+                                    "Monthly Sales Target",
+                                    className="text-xl font-semibold mb-4",
+                                ),
+                                dcc.Dropdown(
+                                    id="year-target-dropdown",
+                                    options=[
+                                        {"label": year, "value": year}
+                                        for year in sorted(df["year"].unique())
+                                    ],
+                                    value=df["year"].max(),
+                                    className="w-full py-2 px-4 mb-4 border rounded-lg",
+                                ),
+                                dcc.Dropdown(
+                                    id="month-target-dropdown",
+                                    options=[],
+                                    value=None,
+                                    className="w-full py-2 px-4 mb-4 border rounded-lg",
+                                ),
+                                dcc.Graph(id="sales-target-gauge"),
+                            ],
+                        ),
+                    ],
+                    className="inline-block align-top",
                 ),
             ],
         ),
-        dcc.Graph(id="monthly-metric-comparison-graph", className="mt-4"),
-    ],
+    ]
 )
 
 
-# Callback to Live Races
 @app.callback(
     Output("live-races-comparison-table", "children"),
     [Input("month-dropdown", "value")],
@@ -303,7 +386,6 @@ def display_live_races_table(selected_month):
     )
 
 
-# Callback to Simulcast
 @app.callback(
     Output("simulcast-comparison-table", "children"), Input("month-dropdown", "value")
 )
@@ -327,12 +409,12 @@ def display_simulcast_table(selected_month):
             ],
             style_table={"overflowX": "auto"},
             style_header={"fontWeight": "bold", "textAlign": "right"},
-            style_header_conditional=[
-                {
-                    "if": {"column_id": "Metric"},
-                    "textAlign": "left",  # Specifically align the "Metric" header to the left
-                }
-            ],
+             style_header_conditional=[
+            {
+                "if": {"column_id": "Metric"},
+                "textAlign": "left",  # Specifically align the "Metric" header to the left
+            }
+        ],
             style_data_conditional=[
                 {
                     "if": {"column_id": "Metric"},
@@ -359,78 +441,154 @@ def display_simulcast_table(selected_month):
     ]
 
 
-# Callback to update the graph based on selected metric
-@app.callback(
-    Output("monthly-metric-comparison-graph", "figure"),
-    [Input("metric-dropdown", "value")],
-)
-def update_graph(selected_metric):
-    current_year = df["year"].max()
-    previous_year = current_year - 1
+# Callback to Update Yearly Sales Graph
+@app.callback(Output("yearly-sales-graph", "figure"), [Input("year-dropdown", "value")])
+def update_yearly_sales_graph(selected_year):
+    monthly_sales = get_monthly_sales(selected_year)
 
-    current_month_data = df[(df["year"] == current_year)][
-        ["month_name", selected_metric]
-    ]
-    previous_year_data = df[(df["year"] == previous_year)][
-        ["month_name", selected_metric]
-    ]
-
-    # Create traces for current year and previous year
-    trace1 = go.Scatter(
-        x=current_month_data["month_name"],
-        y=current_month_data[selected_metric],
-        mode="lines+markers",
-        name=f"Current Year ({current_year})",
+    trace1 = go.Bar(
+        x=monthly_sales["month"],
+        y=monthly_sales["live_races_sales"],
+        name="Live Races Sales",
         marker_color="blue",
-        line=dict(dash="solid"),
     )
-
-    trace2 = go.Scatter(
-        x=previous_year_data["month_name"],
-        y=previous_year_data[selected_metric],
-        mode="lines+markers",
-        name=f"Previous Year ({previous_year})",
-        marker_color="#aaaaaa",
-        line=dict(dash="dot"),
+    trace2 = go.Bar(
+        x=monthly_sales["month"],
+        y=monthly_sales["simulcast_sales"],
+        name="Simulcast Sales",
+        marker_color="green",
     )
 
     return {
         "data": [trace1, trace2],
         "layout": go.Layout(
-            title=f"Comparison of {selected_metric.replace('_', ' ').title()} between {current_year} and {previous_year}",
-            xaxis={"title": "Month"},
-            yaxis={"title": selected_metric.replace("_", " ").title()},
+            title=f"Monthly Sales Data for {selected_year}",
+            xaxis={
+                "title": "Month",
+                "categoryorder": "array",
+                "categoryarray": month_order,
+            },
+            yaxis={"title": "Sales Amount"},
+            barmode="group",
         ),
     }
 
 
-# Callback to update the live races sales gauge
+# Callback to Update Live Races & Simulcast Days Graph
 @app.callback(
-    Output("live-races-sales-gauge", "figure"),
-    [Input("month-dropdown", "value")],
+    Output("race-day-trend-graph", "figure"), [Input("race-day-dropdown", "value")]
 )
-def update_live_races_sales_gauge(selected_month):
-    selected_year = int(df["year"].max())
+def update_race_day_trend_graph(selected_year):
+    monthly_data = get_monthly_sales_extended(selected_year)
+    trace1 = go.Scatter(
+        x=monthly_data["month"],
+        y=monthly_data["live_races_total"],
+        mode="lines+markers",
+        name="Live Races",
+        marker=dict(color="DodgerBlue"),
+    )
+    trace2 = go.Bar(
+        x=monthly_data["month"],
+        y=monthly_data["simulcast_days_total"],
+        name="Simulcast Days",
+        marker=dict(color="Crimson"),
+    )
+    return {
+        "data": [trace1, trace2],
+        "layout": go.Layout(
+            title=f"Live Races & Simulcast Days for {selected_year}",
+            xaxis={
+                "title": "Month",
+                "categoryorder": "array",
+                "categoryarray": month_order,
+            },
+            yaxis={"title": "Count"},
+            barmode="group",
+            hovermode="closest",
+        ),
+    }
+
+
+# Callback to Update Monthly Sales Comparison Graph for 2024
+@app.callback(
+    Output("monthly-comparison-graph-2024", "figure"),
+    Input("year-dropdown", "value"),  # This input is just to trigger the update
+)
+def update_monthly_comparison_graph_2024(_):
+    monthly_sales_2024 = get_monthly_sales(2024)
+
+    trace1 = go.Scatter(
+        x=monthly_sales_2024["month"],
+        y=monthly_sales_2024["live_races_sales"],
+        mode="lines+markers",
+        name="Live Races Sales 2024",
+        marker_color="blue",
+        line=dict(dash="solid"),
+    )
+    trace2 = go.Scatter(
+        x=monthly_sales_2024["month"],
+        y=monthly_sales_2024["simulcast_sales"],
+        mode="lines+markers",
+        name="Simulcast Sales 2024",
+        marker_color="green",
+        line=dict(dash="solid"),
+    )
+
+    # Assuming you want to compare with the previous year (2023)
+    monthly_sales_2023 = get_monthly_sales(2023)
+    trace3 = go.Scatter(
+        x=monthly_sales_2023["month"],
+        y=monthly_sales_2023["live_races_sales"],
+        mode="lines+markers",
+        name="Live Races Sales 2023",
+        marker_color="blue",
+        line=dict(dash="dot"),
+    )
+    trace4 = go.Scatter(
+        x=monthly_sales_2023["month"],
+        y=monthly_sales_2023["simulcast_sales"],
+        mode="lines+markers",
+        name="Simulcast Sales 2023",
+        marker_color="green",
+        line=dict(dash="dot"),
+    )
+
+    return {
+        "data": [trace1, trace2, trace3, trace4],
+        "layout": go.Layout(
+            title="Monthly Sales Comparison for 2024 vs 2023",
+            xaxis={
+                "title": "Month",
+                "categoryorder": "array",
+                "categoryarray": month_order,
+            },
+            yaxis={"title": "Sales Amount"},
+            hovermode="closest",
+        ),
+    }
+
+
+# Callback to update the sales target gauge based on the selected month and year
+@app.callback(
+    Output("sales-target-gauge", "figure"),
+    [Input("year-target-dropdown", "value"), Input("month-target-dropdown", "value")],
+)
+def update_sales_target_gauge(selected_year, selected_month):
     # Filter for the selected year and month
+    selected_date = f"{selected_year}-{selected_month.zfill(2)}-01"  # Ensure the date format matches the CSV
     total_sales = (
         df[(df["year"] == selected_year) & (df["month_name"] == selected_month)][
             "live_races_sales"
         ].sum()
         / 1e6
     )  # Convert to millions
-    # Get sales target for the selected month
-    sales_target = get_sales_target(selected_month) / 1e6  # Convert to millions
-
     # Check if there's a matching target for the selected date
-    target_row = df_targets[df_targets["Month"] == selected_month]
+    target_row = df_targets[df_targets["Month"] == selected_date]
     if not target_row.empty:
         sales_target = target_row["Target"].values[0] / 1e6  # Convert to millions
     else:
         # Set the sales target to 1 billion if no target is found
         sales_target = 1000  # 1 billion in millions
-
-    # Set the maximum range for the gauge to the sales target
-    max_range = sales_target
 
     # Create the gauge figure
     fig = go.Figure(
@@ -440,17 +598,19 @@ def update_live_races_sales_gauge(selected_month):
             number={"suffix": "M"},  # Add 'M' suffix to the number
             domain={"x": [0, 1], "y": [0, 1]},
             title={
-                "text": f"Live Races Sales for {selected_month} {selected_year} (Millions)"
+                "text": f"Sales Target for {selected_month} {selected_year} (Millions)"
             },
             gauge={
-                "axis": {"range": [0, max_range]},  # Adjust the gauge range
+                "axis": {
+                    "range": [0, max(total_sales, sales_target)]
+                },  # Adjust the gauge range
                 "bar": {"color": "blue"},
                 "steps": [
                     {"range": [0, sales_target], "color": "lightblue"},
                     {
-                        "range": [sales_target, max_range],
+                        "range": [sales_target, sales_target],
                         "color": "blue",
-                    },  # The step ends at the maximum range
+                    },  # The step ends at the target itself
                 ],
                 "threshold": {
                     "line": {"color": "red", "width": 4},
@@ -464,64 +624,24 @@ def update_live_races_sales_gauge(selected_month):
     return fig
 
 
-# Callback to update the simulcast sales gauge
+# Callback to populate the month dropdown based on the selected year
 @app.callback(
-    Output("simulcast-sales-gauge", "figure"),
-    [Input("month-dropdown", "value")],
+    Output("month-target-dropdown", "options"), [Input("year-target-dropdown", "value")]
 )
-def update_simulcast_sales_gauge(selected_month):
-    selected_year = int(df["year"].max())
-    # Filter for the selected year and month
-    total_sales = (
-        df[(df["year"] == selected_year) & (df["month_name"] == selected_month)][
-            "simulcast_sales"
-        ].sum()
-        / 1e6
-    )  # Convert to millions
-    # Get sales target for the selected month
-    sales_target = get_sales_target(selected_month) / 1e6  # Convert to millions
+def set_month_target_options(selected_year):
+    months_in_year = df[df["year"] == selected_year]["month_name"].unique()
+    return [{"label": month, "value": month} for month in months_in_year]
 
-    # Check if there's a matching target for the selected date
-    target_row = df_targets[df_targets["Month"] == selected_month]
-    if not target_row.empty:
-        sales_target = target_row["Target"].values[0] / 1e6  # Convert to millions
-    else:
-        # Set the sales target to 1 billion if no target is found
-        sales_target = 1000  # 1 billion in millions
 
-    # Set the maximum range for the gauge to the sales target
-    max_range = sales_target
+@app.callback(
+    Output("month-target-dropdown", "value"),
+    [Input("month-target-dropdown", "options")],
+)
+def set_month_target_value(available_months):
+    if available_months:
+        return available_months[0]["value"]
+    return None
 
-    # Create the gauge figure
-    fig = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=total_sales,
-            number={"suffix": "M"},  # Add 'M' suffix to the number
-            domain={"x": [0, 1], "y": [0, 1]},
-            title={
-                "text": f"Simulcast Sales for {selected_month} {selected_year} (Millions)"
-            },
-            gauge={
-                "axis": {"range": [0, max_range]},  # Adjust the gauge range
-                "bar": {"color": "blue"},
-                "steps": [
-                    {"range": [0, sales_target], "color": "lightblue"},
-                    {
-                        "range": [sales_target, max_range],
-                        "color": "blue",
-                    },  # The step ends at the maximum range
-                ],
-                "threshold": {
-                    "line": {"color": "red", "width": 4},
-                    "thickness": 0.75,
-                    "value": sales_target,
-                },
-            },
-        )
-    )
-
-    return fig
 
 # Step 5: Run the Dash App
 if __name__ == "__main__":
