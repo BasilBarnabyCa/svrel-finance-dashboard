@@ -249,7 +249,7 @@ app.layout = html.Div(
                 html.Div(
                     className="flex justify-center items-center mt-4",
                     children=[
-                        dcc.Graph(id="live-races-sales-gauge", className="mr-4"),
+                        dcc.Graph(id="live-race-sales-gauge", className="mr-4"),
                         dcc.Graph(id="simulcast-sales-gauge", className="ml-4"),
                     ],
                 ),
@@ -463,14 +463,14 @@ def update_graph(selected_metric):
 
 # Callback to update the live races sales gauge with modern colors
 @app.callback(
-    Output("live-races-sales-gauge", "figure"),
+    Output("live-race-sales-gauge", "figure"),
     [Input("month-dropdown", "value")],
 )
 def update_live_race_sales_gauge(selected_month):
     selected_year = int(df["year"].max())
     total_sales = (
         df[(df["year"] == selected_year) & (df["month_name"] == selected_month)][
-            "live_races_sales"
+            "live_race_sales"
         ].sum()
         / 1e6
     )
