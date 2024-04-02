@@ -61,7 +61,7 @@ def format_currency(value):
 def format_value(metric_name, value):
     if np.isnan(value) or value is None:
         return "-"
-    if "Sales" in metric_name or "Purse" in metric_name or "Average" in metric_name:
+    if "Sales" in metric_name or "Purses" in metric_name or "Average" in metric_name:
         return format_currency(value)
     else:  # For non-currency metrics like "No. of Races" or "No. of Days"
         return f"{int(value)}"  # Use int() to convert float to int and remove decimals
@@ -72,9 +72,9 @@ def get_live_races_data(selected_month):
     previous_year = current_year - 1
 
     metrics = {
-        "Sales": "live_races_sales",
-        "Purse": "live_races_purse",
-        "No. of Races": "live_races_total",
+        "Sales": "local_race_sales",
+        "Purses": "local_race_purses",
+        "No. of Races": "local_races_total",
     }
 
     data_frames = []
@@ -225,7 +225,7 @@ app.layout = html.Div(
                     className="mb-8",
                     children=[
                         html.Label(
-                            "Live Races:",
+                            "Local Races:",
                             className="block text-lg font-medium text-gray-700",
                         ),
                         html.Div(id="live-races-comparison-table"),
@@ -266,17 +266,17 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id="metric-dropdown",
                             options=[
-                                {"label": "Local Sales", "value": "live_races_sales"},
-                                {"label": "Purses", "value": "live_races_purse"},
-                                {"label": "Race Days", "value": "live_races_total"},
+                                {"label": "Local Sales", "value": "local_race_sales"},
+                                {"label": "Purses", "value": "local_race_purses"},
+                                {"label": "Local Race Days", "value": "local_races_total"},
                                 {
                                     "label": "Simulcast Sales",
                                     "value": "simulcast_sales",
                                 },
-                                {"label": "Average", "value": "simulcast_average"},
-                                {"label": "Days", "value": "simulcast_days_total"},
+                                {"label": "Simulcast Averages", "value": "simulcast_average"},
+                                {"label": "Simulcast Days", "value": "simulcast_days_total"},
                             ],
-                            value="live_races_sales",  # Default metric
+                            value="local_race_sales",  # Default metric
                             className="block w-full mt-1 rounded-md border-gray-300 shadow-sm",
                         ),
                     ],
@@ -457,12 +457,12 @@ def update_graph(selected_metric):
     Output("live-races-sales-gauge", "figure"),
     [Input("month-dropdown", "value")],
 )
-def update_live_races_sales_gauge(selected_month):
+def update_local_race_sales_gauge(selected_month):
     selected_year = int(df["year"].max())
     # Filter for the selected year and month
     total_sales = (
         df[(df["year"] == selected_year) & (df["month_name"] == selected_month)][
-            "live_races_sales"
+            "local_race_sales"
         ].sum()
         / 1e6
     )  # Convert to millions
@@ -488,7 +488,7 @@ def update_live_races_sales_gauge(selected_month):
             number={"suffix": "M"},  # Add 'M' suffix to the number
             domain={"x": [0, 1], "y": [0, 1]},
             title={
-                "text": f"Live Races Sales for {selected_month} {selected_year} (Millions)"
+                "text": f"Local Race Sales for {selected_month} {selected_year} (Millions)"
             },
             gauge={
                 "axis": {"range": [0, max_range]},  # Adjust the gauge range
