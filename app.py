@@ -40,7 +40,7 @@ def get_sales_target(month_name):
 
 def format_percentage_change(value):
     if value is None or np.isnan(value):
-        return "No Change"
+        return "No Change"  # Or use "Data Not Available" or "-"
     elif value > 0:
         return f"Up {value:.2f}%"
     elif value < 0:
@@ -51,8 +51,20 @@ def format_percentage_change(value):
 
 def format_currency(value):
     if value is None or np.isnan(value):
-        return ""
-    return f"${value:,.2f}"
+        return "-"  # Here you can return "-" or "Data Not Available"
+    if value < 0:
+        return f"-${abs(value):,.2f}"
+    else:
+        return f"${value:,.2f}"
+
+
+def format_value(metric_name, value):
+    if np.isnan(value) or value is None:
+        return "-"
+    if "Sales" in metric_name or "Purse" in metric_name or "Average" in metric_name:
+        return format_currency(value)
+    else:  # For non-currency metrics like "No. of Races" or "No. of Days"
+        return f"{int(value)}"  # Use int() to convert float to int and remove decimals
 
 
 def get_live_races_data(selected_month):
@@ -70,30 +82,29 @@ def get_live_races_data(selected_month):
     for metric_name, column_name in metrics.items():
         current_data = df[
             (df["month_name"] == selected_month) & (df["year"] == current_year)
-        ][column_name].sum()
+        ][column_name].mean()
         previous_data = df[
             (df["month_name"] == selected_month) & (df["year"] == previous_year)
-        ][column_name].sum()
+        ][column_name].mean()
 
         variance = current_data - previous_data
         percentage_change = (
-            (variance / previous_data * 100) if previous_data else np.nan
+            ((variance / previous_data) * 100) if previous_data else np.nan
         )
         formatted_percentage_change = format_percentage_change(percentage_change)
 
-        # Apply currency formatting to financial metrics
-        if "Sales" in metric_name or "Purse" in metric_name:
-            current_data = format_currency(current_data)
-            previous_data = format_currency(previous_data)
-            variance = format_currency(variance)
+        # Format data based on metric type
+        current_data_formatted = format_value(metric_name, current_data)
+        previous_data_formatted = format_value(metric_name, previous_data)
+        variance_formatted = format_value(metric_name, variance)
 
         data_frames.append(
             pd.DataFrame(
                 {
                     "Metric": [metric_name],
-                    str(previous_year): [previous_data],
-                    str(current_year): [current_data],
-                    "Variance": [variance],
+                    str(previous_year): [previous_data_formatted],
+                    str(current_year): [current_data_formatted],
+                    "Variance": [variance_formatted],
                     "Percentage Change": [formatted_percentage_change],
                 }
             )
@@ -109,7 +120,7 @@ def get_simulcast_data(selected_month):
 
     metrics = {
         "Sales": "simulcast_sales",
-        "Average": "simulcast_average",  # New metric added
+        "Averages": "simulcast_average",
         "No. of Days": "simulcast_days_total",
     }
 
@@ -129,19 +140,10 @@ def get_simulcast_data(selected_month):
         )
         formatted_percentage_change = format_percentage_change(percentage_change)
 
-        current_data_formatted = (
-            format_currency(current_data)
-            if "Sales" in metric_name
-            else f"{current_data:,.2f}"
-        )
-        previous_data_formatted = (
-            format_currency(previous_data)
-            if "Sales" in metric_name
-            else f"{previous_data:,.2f}"
-        )
-        variance_formatted = (
-            format_currency(variance) if "Sales" in metric_name else f"{variance:,.2f}"
-        )
+        # Format data based on metric type
+        current_data_formatted = format_value(metric_name, current_data)
+        previous_data_formatted = format_value(metric_name, previous_data)
+        variance_formatted = format_value(metric_name, variance)
 
         data_frames.append(
             pd.DataFrame(
@@ -166,7 +168,7 @@ app = Dash(
         "https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
     ],
 )
-app.title = "SVREL Sales Analysis"
+app.title = "SVREL Sales Analysis Dashboard"
 server = app.server
 
 # Dash App Layout
@@ -192,7 +194,9 @@ app.layout = html.Div(
         html.Div(
             className="flex-grow container mx-auto px-4",
             children=[
-                html.H1("Sales Analysis", className="text-4xl font-bold my-8"),
+                html.H1(
+                    "Sales Analysis Dashboard", className="text-4xl font-bold my-8"
+                ),
                 html.H2(
                     "Monthly Performance Comparison",
                     className="text-2xl font-semibold mb-4",
