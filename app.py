@@ -170,77 +170,120 @@ server = app.server
 
 # Dash App Layout
 app.layout = html.Div(
-    className="container mx-auto px-4",
+    style={
+        "display": "flex",
+        "flexDirection": "column",
+        "minHeight": "100vh",
+        # "backgroundColor": "#f8fafc",
+    },  # Main container with flex display
     children=[
-        html.H1("Sales Dashboard", className="text-3xl font-bold my-8"),
-        html.H2("Month Performance Comparison", className="text-xl font-semibold mb-4"),
-        # Month Selection Dropdown
+        # Full-width Header Bar with Logo
         html.Div(
-            className="mb-4",
+            className="bg-white w-full p-4 flex justify-between items-center shadow-md",  # Adjust the background color and padding as needed
             children=[
-                html.Label(
-                    "Select Month:", className="block text-lg font-medium text-gray-700"
-                ),
-                dcc.Dropdown(
-                    id="month-dropdown",
-                    options=[{"label": month, "value": month} for month in month_order],
-                    value=month_order[0],  # Default to January
-                    className="block w-full mt-1 rounded-md border-gray-300 shadow-sm",
-                ),
+                html.Img(
+                    src=app.get_asset_url("img/logo.png"), style={"height": "50px"}
+                ),  # Adjust the height as needed
+                html.H1("Caymanas Park", className="text-white text-xl"),
             ],
         ),
-        # Live Races Comparison Table
+        # Container for the rest of the content
         html.Div(
-            className="mb-8",
+            className="flex-grow container mx-auto px-4",
             children=[
-                html.Label(
-                    "Live Races:",
-                    className="block text-lg font-medium text-gray-700",
+                html.H1("Sales Analysis", className="text-4xl font-bold my-8"),
+                html.H2(
+                    "Monthly Performance Comparison",
+                    className="text-2xl font-semibold mb-4",
                 ),
-                html.Div(id="live-races-comparison-table"),
-            ],
-        ),
-        # Simulcast Comparison Table
-        html.Div(
-            className="mb-8",
-            children=[
-                html.Label(
-                    "Simulcast:",
-                    className="block text-lg font-medium text-gray-700",
-                ),
-                html.Div(id="simulcast-comparison-table"),
-            ],
-        ),
-        html.Div(
-            className="flex justify-center items-center mt-4",
-            children=[
-                dcc.Graph(id="live-races-sales-gauge", className="mr-4"),
-                dcc.Graph(id="simulcast-sales-gauge", className="ml-4"),
-            ],
-        ),
-        html.Div(
-            className="mb-4",
-            children=[
-                html.Label(
-                    "Select Metric:",
-                    className="block text-lg font-medium text-gray-700",
-                ),
-                dcc.Dropdown(
-                    id="metric-dropdown",
-                    options=[
-                        {"label": "Local Sales", "value": "live_races_sales"},
-                        {"label": "Purses", "value": "live_races_purse"},
-                        {"label": "Race Days", "value": "live_races_total"},
-                        {"label": "Simulcast Sales", "value": "simulcast_sales"},
-                        {"label": "Average", "value": "simulcast_average"},
-                        {"label": "Days", "value": "simulcast_days_total"},
+                # Month Selection Dropdown
+                html.Div(
+                    className="mb-4",
+                    children=[
+                        html.Label(
+                            "Select Month:",
+                            className="block text-lg font-medium text-gray-700",
+                        ),
+                        dcc.Dropdown(
+                            id="month-dropdown",
+                            options=[
+                                {"label": month, "value": month}
+                                for month in month_order
+                            ],
+                            value=month_order[0],  # Default to January
+                            className="block w-full mt-1 rounded-md border-gray-300 shadow-sm",
+                        ),
                     ],
-                    value="live_races_sales",  # Default metric
-                    className="block w-full mt-1 rounded-md border-gray-300 shadow-sm",
                 ),
+                # Live Races Comparison Table
+                html.Div(
+                    className="mb-8",
+                    children=[
+                        html.Label(
+                            "Live Races:",
+                            className="block text-lg font-medium text-gray-700",
+                        ),
+                        html.Div(id="live-races-comparison-table"),
+                    ],
+                ),
+                # Simulcast Comparison Table
+                html.Div(
+                    className="mb-8",
+                    children=[
+                        html.Label(
+                            "Simulcast:",
+                            className="block text-lg font-medium text-gray-700",
+                        ),
+                        html.Div(id="simulcast-comparison-table"),
+                    ],
+                ),
+                html.H2(
+                    "Monthly Targets",
+                    className="text-2xl font-semibold mb-4 mt-10 text-center",
+                ),
+                html.Div(
+                    className="flex justify-center items-center mt-4",
+                    children=[
+                        dcc.Graph(id="live-races-sales-gauge", className="mr-4"),
+                        dcc.Graph(id="simulcast-sales-gauge", className="ml-4"),
+                    ],
+                ),
+                html.H2(
+                    "Metric Comparison", className="text-2xl font-semibold mb-4 mt-10"
+                ),
+                html.Div(
+                    className="mb-4",
+                    children=[
+                        html.Label(
+                            "Select Metric:",
+                            className="block text-lg font-medium text-gray-700",
+                        ),
+                        dcc.Dropdown(
+                            id="metric-dropdown",
+                            options=[
+                                {"label": "Local Sales", "value": "live_races_sales"},
+                                {"label": "Purses", "value": "live_races_purse"},
+                                {"label": "Race Days", "value": "live_races_total"},
+                                {
+                                    "label": "Simulcast Sales",
+                                    "value": "simulcast_sales",
+                                },
+                                {"label": "Average", "value": "simulcast_average"},
+                                {"label": "Days", "value": "simulcast_days_total"},
+                            ],
+                            value="live_races_sales",  # Default metric
+                            className="block w-full mt-1 rounded-md border-gray-300 shadow-sm",
+                        ),
+                    ],
+                ),
+                dcc.Graph(id="monthly-metric-comparison-graph", className="mt-4"),
             ],
         ),
-        dcc.Graph(id="monthly-metric-comparison-graph", className="mt-4"),
+        html.Div(
+            className="bg-gray-800 text-white py-4 px-8 flex justify-center items-center",
+            children=[html.H1("Developed by Devmassive LLC", className="text-sm")],
+            style={"width": "100%"},
+        ),
     ],
 )
 
@@ -522,6 +565,7 @@ def update_simulcast_sales_gauge(selected_month):
     )
 
     return fig
+
 
 # Step 5: Run the Dash App
 if __name__ == "__main__":
