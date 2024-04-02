@@ -61,7 +61,7 @@ def format_currency(value):
 def format_value(metric_name, value):
     if np.isnan(value) or value is None:
         return "-"
-    if "Sales" in metric_name or "Purses" in metric_name or "Average" in metric_name:
+    if "Revenue" in metric_name or "Purse Structure" in metric_name or "Average" in metric_name:
         return format_currency(value)
     else:  # For non-currency metrics like "No. of Races" or "No. of Days"
         return f"{int(value)}"  # Use int() to convert float to int and remove decimals
@@ -72,9 +72,9 @@ def get_live_races_data(selected_month):
     previous_year = current_year - 1
 
     metrics = {
-        "Sales": "live_race_sales",
-        "Purses": "live_race_purses",
-        "No. of Races": "live_races_total",
+        "Revenue": "live_racing_revenue",
+        "Purse Structure": "purse_structure",
+        "No. of Races": "number_of_live_races",
     }
 
     data_frames = []
@@ -119,9 +119,9 @@ def get_simulcast_data(selected_month):
     previous_year = current_year - 1
 
     metrics = {
-        "Sales": "simulcast_sales",
-        "Averages": "simulcast_average",
-        "No. of Days": "simulcast_days_total",
+        "Revenue": "simulcast_revenue",
+        "Daily Averages": "simulcast_daily_averages",
+        "No. of Days": "number_of_simulcast_days",
     }
 
     data_frames = []
@@ -177,6 +177,7 @@ app.layout = html.Div(
         "display": "flex",
         "flexDirection": "column",
         "minHeight": "100vh",
+        "font-size": "1.35em",
         # "backgroundColor": "#f8fafc",
     },  # Main container with flex display
     children=[
@@ -254,38 +255,38 @@ app.layout = html.Div(
                     ],
                 ),
                 html.H2(
-                    "Metric Comparison", className="text-2xl font-semibold mb-4 mt-10"
+                    "KPI Review", className="text-2xl font-semibold mb-4 mt-10"
                 ),
                 html.Div(
                     className="mb-4",
                     children=[
                         html.Label(
-                            "Select Metric:",
+                            "Select KPI:",
                             className="block text-lg font-medium text-gray-700",
                         ),
                         dcc.Dropdown(
                             id="metric-dropdown",
                             options=[
-                                {"label": "Live Sales", "value": "live_race_sales"},
-                                {"label": "Purses", "value": "live_race_purses"},
+                                {"label": "Live Racing Revenue", "value": "live_racing_revenue"},
+                                {"label": "Purse Structure", "value": "purse_structure"},
                                 {
-                                    "label": "Live Race Days",
-                                    "value": "live_races_total",
+                                    "label": "No. of Live Races",
+                                    "value": "number_of_live_races",
                                 },
                                 {
-                                    "label": "Simulcast Sales",
-                                    "value": "simulcast_sales",
+                                    "label": "Simulcast Revenue",
+                                    "value": "simulcast_revenue",
                                 },
                                 {
-                                    "label": "Simulcast Averages",
-                                    "value": "simulcast_average",
+                                    "label": "Simulcast Daily Averages",
+                                    "value": "simulcast_daily_averages",
                                 },
                                 {
-                                    "label": "Simulcast Days",
-                                    "value": "simulcast_days_total",
+                                    "label": "No. of Simulcast Days",
+                                    "value": "number_of_simulcast_days",
                                 },
                             ],
-                            value="live_race_sales",  # Default metric
+                            value="live_racing_revenue",  # Default metric
                             className="block w-full mt-1 rounded-md border-gray-300 shadow-sm",
                         ),
                     ],
@@ -466,11 +467,11 @@ def update_graph(selected_metric):
     Output("live-race-sales-gauge", "figure"),
     [Input("month-dropdown", "value")],
 )
-def update_live_race_sales_gauge(selected_month):
+def update_live_racing_revenue_gauge(selected_month):
     selected_year = int(df["year"].max())
     total_sales = (
         df[(df["year"] == selected_year) & (df["month_name"] == selected_month)][
-            "live_race_sales"
+            "live_racing_revenue"
         ].sum()
         / 1e6
     )
@@ -519,11 +520,11 @@ def update_live_race_sales_gauge(selected_month):
     Output("simulcast-sales-gauge", "figure"),
     [Input("month-dropdown", "value")],
 )
-def update_simulcast_sales_gauge(selected_month):
+def update_simulcast_revenue_gauge(selected_month):
     selected_year = int(df["year"].max())
     total_sales = (
         df[(df["year"] == selected_year) & (df["month_name"] == selected_month)][
-            "simulcast_sales"
+            "simulcast_revenue"
         ].sum()
         / 1e6
     )
